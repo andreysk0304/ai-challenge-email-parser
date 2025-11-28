@@ -7,8 +7,7 @@ IMAP_PASS = os.getenv("IMAP_PASS")
 
 IMAP_FOLDER = "parser"
 
-# BACKEND_URL = os.getenv("BACKEND_URL")
-BACKEND_URL = "https://hackaton.safetyscooter.ru/emails/classify"
+BACKEND_URL = os.getenv("BACKEND_URL")
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
