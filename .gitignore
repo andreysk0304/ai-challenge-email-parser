@@ -1,0 +1,29 @@
+# виртуальное окружение
+.venv/
+venv/
+env/
+
+# pycache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.idea/
+.vscode/
+
+# локальные переменные и секреты
+.env
+*.env
+.env.local
+
+# логи
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# docker
+*.pid
