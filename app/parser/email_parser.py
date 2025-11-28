@@ -1,118 +1,81 @@
-# app/parser/email_parser.py
-from email.header import decode_header
+import re
 from email.utils import parseaddr
-from typing import Optional
-
-import email
-
+from email.header import decode_header
 from app.models.email_dto import EmailData
 
 
-def decode_header_safe(value: Optional[str]) -> str:
+def decode_header_safe(value: str) -> str:
     if not value:
         return ""
     parts = decode_header(value)
-    result = []
+    out = []
     for text, enc in parts:
         if isinstance(text, bytes):
-            result.append(text.decode(enc or "utf-8", errors="ignore"))
+            out.append(text.decode(enc or "utf-8", errors="ignore"))
         else:
-            result.append(text)
-    return "".join(result)
+            out.append(text)
+    return "".join(out)
 
 
-def extract_text_body(msg: email.message.Message) -> str:
-    # пробуем вытащить text/plain
+def html_to_text(html: str) -> str:
+    # Простейшая очистка HTML → только текст
+    text = re.sub(r"<br\s*/?>", "\n", html, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", "", text)      # убираем все теги
+    text = text.replace("&nbsp;", " ")
+    text = text.strip()
+    return text
+
+
+def extract_text_body(msg):
+    # взять text/plain
     if msg.is_multipart():
         for part in msg.walk():
-            ctype = part.get_content_type()
-            cdisp = str(part.get("Content-Disposition") or "")
-            if ctype == "text/plain" and "attachment" not in cdisp:
+            if part.get_content_type() == "text/plain":
                 payload = part.get_payload(decode=True)
                 if payload:
-                    charset = part.get_content_charset() or "utf-8"
-                    return payload.decode(charset, errors="ignore")
+                    return payload.decode(part.get_content_charset() or "utf-8", errors="ignore")
 
-        # если нет text/plain — берем html
+        # Если plain нет → используем HTML и чистим
         for part in msg.walk():
-            ctype = part.get_content_type()
-            cdisp = str(part.get("Content-Disposition") or "")
-            if ctype == "text/html" and "attachment" not in cdisp:
+            if part.get_content_type() == "text/html":
                 payload = part.get_payload(decode=True)
                 if payload:
-                    charset = part.get_content_charset() or "utf-8"
-                    return payload.decode(charset, errors="ignore")
-        return ""
+                    html = payload.decode(part.get_content_charset() or "utf-8", errors="ignore")
+                    return html_to_text(html)
     else:
         payload = msg.get_payload(decode=True)
         if payload:
-            charset = msg.get_content_charset() or "utf-8"
-            return payload.decode(charset, errors="ignore")
-        return ""
+            return payload.decode(msg.get_content_charset() or "utf-8", errors="ignore")
+
+    return ""
 
 
-def clean_body(raw: str) -> str:
-    if not raw:
-        return ""
-    lines = raw.splitlines()
-    result = []
-
-    stop_phrases = [
-        "On ",                      # On Mon, ...
-        "-----Original Message-----",
-        "От:",                      # русские реплай-заголовки
-    ]
-
-    for line in lines:
-        stripped = line.strip()
-        if any(stripped.startswith(p) for p in stop_phrases):
-            break
-        if stripped.startswith(">"):
-            break
-        result.append(line)
-
-    return "\n".join(result).strip()
-
-
-def get_thread_id(msg: email.message.Message) -> Optional[str]:
-    in_reply_to = msg.get("In-Reply-To")
-    if in_reply_to:
-        return in_reply_to.strip()
-
-    references = msg.get("References")
-    if references:
-        refs = references.strip().split()
-        if refs:
-            return refs[-1]
+def get_thread_id(msg):
+    if msg.get("In-Reply-To"):
+        return msg.get("In-Reply-To")
+    if msg.get("References"):
+        refs = msg.get("References").split()
+        return refs[-1]
     return None
 
 
-def parse_email(msg: email.message.Message) -> EmailData:
-    """
-    Превращает сырое письмо в EmailData.
-    Все доп. поля (status, category, reason, deadline_time, formality)
-    сейчас оставляем по умолчанию.
-    """
-    message_id = (msg.get("Message-ID") or "").strip()
+def parse_email(msg):
+    # Извлекаем письмо в текстовом виде
+    body = extract_text_body(msg)
 
-    subject = decode_header_safe(msg.get("Subject"))
-    raw_body = extract_text_body(msg)
-    cleaned = clean_body(raw_body)
-
-    from_header = msg.get("From") or ""
-    to_header = msg.get("To") or ""
-
-    _, from_addr = parseaddr(from_header)
-    _, to_addr = parseaddr(to_header)
+    _, from_addr = parseaddr(msg.get("From"))
+    _, to_addr = parseaddr(msg.get("To") or "")
 
     return EmailData(
-        message_id=message_id,
+        message_id=msg.get("Message-ID"),
         thread_id=get_thread_id(msg),
-        from_email=from_addr or None,
+
+        from_email=from_addr,
         to_email=to_addr or None,
-        subject=subject or None,
-        raw_body=raw_body or None,
-        cleaned_body=cleaned,
-        # status, category, reason, deadline_time, formality
-        # будут взяты из дефолтов модели
+
+        subject=decode_header_safe(msg.get("Subject")),
+        raw_body=body,              # теперь здесь только текст, а не html
+        cleaned_body=body.strip(),  # можно делать доп. очистку
+
+        status="new"
     )

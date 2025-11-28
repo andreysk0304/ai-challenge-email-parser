@@ -11,7 +11,6 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
 
-        # если нужно, можно добавить больше полей
         if record.exc_info:
             log_record["exc_info"] = self.formatException(record.exc_info)
 
