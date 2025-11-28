@@ -54,7 +54,7 @@ class ImapClient:
             raise last_exc
         raise RuntimeError("IMAP connection failed for unknown reason")
 
-    def fetch_unseen(self) -> List[Message]:          # <-- здесь Message
+    def fetch_unseen(self) -> List[Message]:
         mail = self._connect()
 
         try:

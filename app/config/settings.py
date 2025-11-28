@@ -1,15 +1,14 @@
 import os
 
 IMAP_HOST = "imap.yandex.ru"
-IMAP_USER = "ilin.vladisaw@yandex.ru"
 
-# ИМЯ переменной окружения
-# IMAP_PASS = os.getenv("IMAP_PASS")   # значение задаёшь в окружении
-IMAP_PASS = "fmokbrjtqakceagn"
+IMAP_USER = os.getenv("IMAP_USER")
+IMAP_PASS = os.getenv("IMAP_PASS")
 
-IMAP_FOLDER = "parser"                # или "parser", если такая папка реально есть
+IMAP_FOLDER = "parser"
 
-BACKEND_URL = os.getenv("BACKEND_URL")
+# BACKEND_URL = os.getenv("BACKEND_URL")
+BACKEND_URL = "https://hackaton.safetyscooter.ru/emails/classify"
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 

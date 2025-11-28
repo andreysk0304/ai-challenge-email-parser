@@ -1,20 +1,24 @@
+# app/models/email_dto.py
+from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+
+from pydantic import BaseModel, Field
 
 
-class ParsedEmail(BaseModel):
-    # ID письма
+class EmailData(BaseModel):
     message_id: str
-    # ID письма, на которое это ответ (In-Reply-To / References)
     thread_id: Optional[str] = None
 
-    # просто строки, без строгой валидации email
-    from_email: str
+    from_email: Optional[str] = None
     to_email: Optional[str] = None
 
     subject: Optional[str] = None
-
-    # исходный текст
     raw_body: Optional[str] = None
-    # очищенный текст
     cleaned_body: str
+
+    status: str = Field(default="new")
+    category: Optional[str] = None
+    reason: Optional[str] = None
+
+    deadline_time: Optional[datetime] = None
+    formality: Optional[str] = None
