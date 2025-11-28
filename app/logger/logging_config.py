@@ -1,4 +1,3 @@
-# app/logging_config.py
 import logging
 import sys
 import json

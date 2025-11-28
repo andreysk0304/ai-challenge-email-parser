@@ -1,8 +1,10 @@
 import imaplib
-import email
 import logging
 import time
 from typing import List
+
+import email
+from email.message import Message  # <-- вот это
 
 from app.config.settings import (
     IMAP_HOST,
@@ -43,19 +45,16 @@ class ImapClient:
                 return mail
             except Exception as e:
                 last_exc = e
-                logger.error(
-                    f"IMAP connect failed on attempt {attempt}: {e!r}"
-                )
+                logger.error(f"IMAP connect failed on attempt {attempt}: {e!r}")
                 if attempt < IMAP_MAX_RETRIES:
                     time.sleep(IMAP_RETRY_DELAY_SEC)
 
         logger.error("IMAP connection failed after all retries")
         if last_exc:
             raise last_exc
-        else:
-            raise RuntimeError("IMAP connection failed for unknown reason")
+        raise RuntimeError("IMAP connection failed for unknown reason")
 
-    def fetch_unseen(self) -> List[email.message.Message]:
+    def fetch_unseen(self) -> List[Message]:          # <-- здесь Message
         mail = self._connect()
 
         try:
@@ -69,7 +68,7 @@ class ImapClient:
                 logger.error(f"IMAP search UNSEEN failed: {status}")
                 return []
 
-            messages: List[email.message.Message] = []
+            messages: List[Message] = []              # <-- и тут Message
             ids = data[0].split()
             logger.info(f"Found {len(ids)} unseen messages")
 
@@ -82,7 +81,6 @@ class ImapClient:
                 msg = email.message_from_bytes(msg_data[0][1])
                 messages.append(msg)
 
-                # помечаем письмо прочитанным
                 mail.store(num, "+FLAGS", "\\Seen")
 
             return messages
@@ -90,6 +88,5 @@ class ImapClient:
             try:
                 mail.close()
             except Exception:
-                # папка может быть не открыта — не страшно
                 pass
             mail.logout()
